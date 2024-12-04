@@ -34,11 +34,14 @@ async function generateAnalysis(prompt) {
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
-        { role: "system", content: "You are a professional financial analyst." },
+        { 
+          role: "system", 
+          content: "You are a professional financial analyst. Format your analysis with [SECTION] markers." 
+        },
         { role: "user", content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 500
+      max_tokens: 1000
     });
 
     return completion.choices[0].message.content;
@@ -93,22 +96,34 @@ app.get('/api/analysis/:symbol', async (req, res) => {
     const quote = await yahooFinance.quote(symbol, yahooFinanceOptions);
     
     const analysisPrompt = `Please analyze this market data for ${symbol}:
-    
-    Current Price: $${quote.regularMarketPrice || 'N/A'}
-    Previous Close: $${quote.regularMarketPreviousClose || 'N/A'}
-    Day Range: $${quote.regularMarketDayLow || 'N/A'} - $${quote.regularMarketDayHigh || 'N/A'}
-    Volume: ${quote.regularMarketVolume || 'N/A'}
-    Market Cap: $${quote.marketCap || 'N/A'}
-    
-    Please provide a detailed analysis including:
-    1. Current Market Position
-    2. Price Trends
-    3. Key Statistics Analysis
-    4. Trading Volume Analysis
-    5. Market Sentiment
-    6. Potential Risks and Opportunities
-    
-    Keep the analysis concise but informative.`;
+
+Current Price: $${quote.regularMarketPrice || 'N/A'}
+Previous Close: $${quote.regularMarketPreviousClose || 'N/A'}
+Day Range: $${quote.regularMarketDayLow || 'N/A'} - $${quote.regularMarketDayHigh || 'N/A'}
+Volume: ${quote.regularMarketVolume || 'N/A'}
+Market Cap: $${quote.marketCap || 'N/A'}
+
+Please provide a detailed analysis in the following format:
+
+[SECTION]Market Position[SECTION]
+Analyze the current market position, including market cap and overall standing.
+
+[SECTION]Price Trends[SECTION]
+Analyze recent price movements, patterns, and potential future directions.
+
+[SECTION]Key Statistics[SECTION]
+Analyze key financial metrics and their implications for investors.
+
+[SECTION]Volume Analysis[SECTION]
+Analyze trading volume patterns and what they indicate about market activity.
+
+[SECTION]Market Sentiment[SECTION]
+Analyze overall market sentiment and investor perception.
+
+[SECTION]Risks & Opportunities[SECTION]
+Identify key risks and potential growth opportunities.
+
+Keep each section concise but informative.`;
 
     const analysis = await generateAnalysis(analysisPrompt);
     
