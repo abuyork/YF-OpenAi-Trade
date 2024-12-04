@@ -3,16 +3,15 @@ import {
   Container, Button, Typography, Box, 
   CircularProgress, Grid, AppBar, Toolbar, Card, CardContent,
   useTheme, useMediaQuery, Select, MenuItem, FormControl, 
-  InputLabel, Tabs, Tab, Accordion, AccordionSummary, AccordionDetails
+  InputLabel, Tabs, Tab, Accordion, AccordionSummary, AccordionDetails, Alert, SelectChangeEvent
 } from '@mui/material'
 import { marketCategories } from './types/symbols'
 import { 
   TrendingUp, ShowChart, Analytics,
-  ExpandMore, TrendingDown, BarChart, Psychology,
-  Assessment, Warning
-} from '@mui/icons-material'
+  ExpandMore, 
+  Assessment} from '@mui/icons-material'
 import axios, { AxiosError } from 'axios'
-import type { MarketData, AnalysisResponse, APIError } from './types/api'
+import type { MarketData, APIError } from './types/api'
 import React from 'react'
 import TradingViewWidget from './components/TradingViewWidget'
 
@@ -58,20 +57,14 @@ function App() {
       
       const getIcon = (title: string) => {
         switch (title) {
-          case 'Market Position':
-            return <Assessment />;
-          case 'Price Trends':
-            return <TrendingUp />;
-          case 'Key Statistics':
-            return <BarChart />;
-          case 'Volume Analysis':
-            return <TrendingDown />;
-          case 'Market Sentiment':
-            return <Psychology />;
-          case 'Risks & Opportunities':
-            return <Warning />;
-          default:
+          case 'Technical Summary':
             return <Analytics />;
+          case 'Trading Signal':
+            return <TrendingUp />;
+          case 'Key Levels':
+            return <ShowChart />;
+          default:
+            return <Assessment />;
         }
       };
 
@@ -85,57 +78,93 @@ function App() {
     return parsedSections;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!symbol.trim()) return
+  const fetchWithRetry = async (url: string, retries = 3): Promise<any> => {
+    let lastError: Error | null = null;
+    
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await axios.get(url);
+        if (!response.data) {
+          throw new Error('Empty response received');
+        }
+        return response;
+      } catch (error) {
+        lastError = error as Error;
+        if (i === retries - 1) break;
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
+    }
+    throw lastError || new Error('Failed after retry attempts');
+  };
 
-    setLoading(true)
-    setError('')
-    setMarketData(null)
-    setAnalysis('')
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!symbol.trim()) {
+      setError('Please enter a valid symbol');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setMarketData(null);
+    setAnalysis('');
+    setAnalysisData([]);
     
     try {
-      const marketResponse = await axios.get<MarketData>(`/api/market-data/${symbol.toUpperCase()}`)
-      if (marketResponse.data.error) {
-        throw new Error(marketResponse.data.message)
+      const marketResponse = await fetchWithRetry(`/api/market-data/${symbol.toUpperCase()}`);
+      if (!marketResponse?.data || marketResponse.data.error) {
+        throw new Error(marketResponse?.data?.message || 'Failed to fetch market data');
       }
-      setMarketData(marketResponse.data)
+      setMarketData(marketResponse.data);
 
-      const analysisResponse = await axios.get<AnalysisResponse>(`/api/analysis/${symbol.toUpperCase()}`)
-      if (analysisResponse.data.error) {
-        throw new Error(analysisResponse.data.message)
+      const analysisResponse = await fetchWithRetry(`/api/analysis/${symbol.toUpperCase()}`);
+      if (!analysisResponse?.data || analysisResponse.data.error) {
+        throw new Error(analysisResponse?.data?.message || 'Failed to generate analysis');
       }
-      setAnalysis(analysisResponse.data.analysis)
-      setAnalysisData(parseAnalysis(analysisResponse.data.analysis))
+      
+      const analysisText = analysisResponse.data.analysis;
+      if (!analysisText) {
+        throw new Error('No analysis data received');
+      }
+      
+      setAnalysis(analysisText);
+      setAnalysisData(parseAnalysis(analysisText));
     } catch (err) {
-      console.error('API Error:', err)
+      console.error('API Error:', err);
       if (axios.isAxiosError(err)) {
-        const axiosError = err as AxiosError<APIError>
-        if (axiosError.response?.data) {
-          setError(axiosError.response.data.message)
-        } else if (axiosError.request) {
-          setError('No response from server. Please try again.')
-        } else {
-          setError(axiosError.message)
-        }
+        const axiosError = err as AxiosError<APIError>;
+        setError(
+          axiosError.response?.data?.message || 
+          axiosError.message ||
+          'Unable to fetch data. Please try again later.'
+        );
       } else if (err instanceof Error) {
-        setError(err.message)
+        setError(err.message);
       } else {
-        setError('An unexpected error occurred')
+        setError('An unexpected error occurred');
       }
+      
+      setMarketData(null);
+      setAnalysis('');
+      setAnalysisData([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleCategoryChange = (_event: React.SyntheticEvent, newValue: string) => {
     setCategory(newValue);
     setSelectedSymbol('');
   };
 
-  const handleSymbolChange = (event: any) => {
-    setSelectedSymbol(event.target.value);
-    setSymbol(event.target.value);
+  const handleSymbolChange = (event: SelectChangeEvent<string>) => {
+    const value = event.target.value;
+    setSelectedSymbol(value);
+    setSymbol(value);
+  };
+
+  const formatDisplaySymbol = (symbol: string) => {
+    return symbol.replace('=X', '');
   };
 
   return (
@@ -155,6 +184,18 @@ function App() {
 
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Grid container spacing={3}>
+          {error && (
+            <Grid item xs={12}>
+              <Alert 
+                severity="error" 
+                onClose={() => setError('')}
+                sx={{ mb: 2 }}
+              >
+                {error}
+              </Alert>
+            </Grid>
+          )}
+
           <Grid item xs={12}>
             <TradingViewWidget symbol={selectedSymbol || 'AAPL'} />
           </Grid>
@@ -287,7 +328,7 @@ function App() {
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <TrendingUp sx={{ mr: 1, color: 'primary.main' }} />
                     <Typography variant="h6">
-                      Market Data: {marketData.quote.symbol}
+                      Market Data: {formatDisplaySymbol(marketData.quote.symbol)}
                     </Typography>
                   </Box>
                   <Grid container spacing={2}>
@@ -368,7 +409,10 @@ function App() {
                         <Typography 
                           variant="body2" 
                           color="text.secondary" 
-                          sx={{ lineHeight: 1.7 }}
+                          sx={{ 
+                            lineHeight: 1.7,
+                            whiteSpace: 'pre-line'
+                          }}
                         >
                           {section.content}
                         </Typography>

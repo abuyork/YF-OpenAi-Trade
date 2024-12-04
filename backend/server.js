@@ -26,6 +26,13 @@ const yahooFinanceOptions = {
   retry: {
     maxRetries: 3,
     backoff: 1000
+  },
+  validateResult: (result) => {
+    return result !== undefined;
+  },
+  queue: {
+    concurrency: 1,
+    interval: 1000
   }
 };
 
@@ -36,12 +43,12 @@ async function generateAnalysis(prompt) {
       messages: [
         { 
           role: "system", 
-          content: "You are a professional financial analyst. Format your analysis with [SECTION] markers." 
+          content: "You are a professional technical analyst. Provide concise analysis and clear trading signals with risk/reward ratios. Format your analysis with [SECTION] markers." 
         },
         { role: "user", content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 1000
+      max_tokens: 500
     });
 
     return completion.choices[0].message.content;
@@ -51,35 +58,47 @@ async function generateAnalysis(prompt) {
   }
 }
 
+async function getYahooFinanceData(symbol) {
+  try {
+    let attempts = 0;
+    const maxAttempts = 3;
+    let error;
+
+    while (attempts < maxAttempts) {
+      try {
+        const quote = await yahooFinance.quote(symbol, yahooFinanceOptions);
+        return quote;
+      } catch (err) {
+        error = err;
+        attempts++;
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempts));
+        }
+      }
+    }
+    throw error;
+  } catch (error) {
+    console.error('Yahoo Finance Error:', error);
+    throw new Error(`Failed to fetch data for ${symbol}: ${error.message}`);
+  }
+}
+
 app.get('/api/market-data/:symbol', async (req, res) => {
   try {
     const { symbol } = req.params;
     console.log('Fetching data for symbol:', symbol);
     
-    // Get quote data
-    const rawQuote = await yahooFinance.quote(symbol, yahooFinanceOptions);
+    const rawQuote = await getYahooFinanceData(symbol);
     
-    // Get historical data (1 year of daily data)
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setFullYear(endDate.getFullYear() - 1);
-    
-    const historicalData = await yahooFinance.historical(symbol, {
-      period1: startDate,
-      period2: endDate,
-      interval: '1d'
-    });
-
     if (!rawQuote) {
       return res.status(404).json({
         error: true,
-        message: 'Symbol not found'
+        message: 'Symbol not found or data unavailable'
       });
     }
-    
+
     const quote = {
       symbol: rawQuote.symbol,
-      // Current market data
       regularMarketPrice: rawQuote.regularMarketPrice || 0,
       regularMarketOpen: rawQuote.regularMarketOpen || 0,
       regularMarketDayHigh: rawQuote.regularMarketDayHigh || 0,
@@ -87,39 +106,37 @@ app.get('/api/market-data/:symbol', async (req, res) => {
       regularMarketPreviousClose: rawQuote.regularMarketPreviousClose || 0,
       regularMarketVolume: rawQuote.regularMarketVolume || 0,
       
-      // Price metrics
       fiftyTwoWeekLow: rawQuote.fiftyTwoWeekLow || 0,
       fiftyTwoWeekHigh: rawQuote.fiftyTwoWeekHigh || 0,
       fiftyDayAverage: rawQuote.fiftyDayAverage || 0,
       twoHundredDayAverage: rawQuote.twoHundredDayAverage || 0,
       
-      // Company metrics
       marketCap: rawQuote.marketCap || 0,
       trailingPE: rawQuote.trailingPE || 0,
       priceToBook: rawQuote.priceToBook || 0,
       dividendYield: rawQuote.dividendYield || 0,
       
-      // Change metrics
       regularMarketChange: rawQuote.regularMarketChange || 0,
       regularMarketChangePercent: rawQuote.regularMarketChangePercent || 0,
-      
-      // Historical OHLCV data
-      historical: historicalData.map(day => ({
+    };
+
+    if (rawQuote.historical && Array.isArray(rawQuote.historical)) {
+      quote.historical = rawQuote.historical.map(day => ({
         date: day.date,
         open: day.open,
         high: day.high,
         low: day.low,
         close: day.close,
         volume: day.volume
-      }))
-    };
+      }));
+    }
 
     res.json({ quote });
   } catch (error) {
-    console.error('Yahoo Finance API Error:', error);
+    console.error('Market Data Error:', error);
     res.status(500).json({ 
       error: true,
-      message: 'Failed to fetch market data: ' + error.message
+      message: 'Failed to fetch market data. Please try again later.'
     });
   }
 });
@@ -129,40 +146,42 @@ app.get('/api/analysis/:symbol', async (req, res) => {
     const { symbol } = req.params;
     console.log('Generating analysis for symbol:', symbol);
     
-    const quote = await yahooFinance.quote(symbol, yahooFinanceOptions);
+    const quote = await getYahooFinanceData(symbol);
     
-    // Format the symbol for display by removing =X for forex pairs
+    if (!quote) {
+      throw new Error('Unable to fetch market data');
+    }
+
     const displaySymbol = symbol.includes('=X') ? symbol.replace('=X', '') : symbol;
     
-    const analysisPrompt = `Please analyze this market data for ${displaySymbol}:
+    const analysisPrompt = `Analyze this market data for ${displaySymbol}:
 
 Current Price: $${quote.regularMarketPrice || 'N/A'}
 Previous Close: $${quote.regularMarketPreviousClose || 'N/A'}
 Day Range: $${quote.regularMarketDayLow || 'N/A'} - $${quote.regularMarketDayHigh || 'N/A'}
+50-Day Average: $${quote.fiftyDayAverage || 'N/A'}
+200-Day Average: $${quote.twoHundredDayAverage || 'N/A'}
 Volume: ${quote.regularMarketVolume || 'N/A'}
-Market Cap: $${quote.marketCap || 'N/A'}
 
-Please provide a detailed analysis in the following format:
+Provide a brief technical analysis with the following sections:
 
-[SECTION]Market Position[SECTION]
-Analyze the current market position, including market cap and overall standing.
+[SECTION]Technical Summary[SECTION]
+Give a 2-3 sentence technical overview focusing on key price levels and trends.
 
-[SECTION]Price Trends[SECTION]
-Analyze recent price movements, patterns, and potential future directions.
+[SECTION]Trading Signal[SECTION]
+SIGNAL: BUY/SELL/HOLD
+ENTRY PRICE: $X.XXXXX
+STOP LOSS: $X.XXXXX
+TAKE PROFIT: $X.XXXXX
+RISK/REWARD RATIO: X.XX
+SIGNAL STRENGTH: Strong/Moderate/Weak
 
-[SECTION]Key Statistics[SECTION]
-Analyze key financial metrics and their implications for investors.
+[SECTION]Key Levels[SECTION]
+1. Resistance: $X.XXXXX
+2. Support: $X.XXXXX
+3. Key Price Level: $X.XXXXX (50-Day Average/200-Day Average/Previous High/etc)
 
-[SECTION]Volume Analysis[SECTION]
-Analyze trading volume patterns and what they indicate about market activity.
-
-[SECTION]Market Sentiment[SECTION]
-Analyze overall market sentiment and investor perception.
-
-[SECTION]Risks & Opportunities[SECTION]
-Identify key risks and potential growth opportunities.
-
-Keep each section concise but informative.`;
+Keep each section very concise and focused on actionable insights.`;
 
     const analysis = await generateAnalysis(analysisPrompt);
     
@@ -175,7 +194,7 @@ Keep each section concise but informative.`;
     console.error('Analysis Error:', error);
     res.status(500).json({ 
       error: true,
-      message: 'Failed to generate analysis: ' + error.message
+      message: 'Failed to generate analysis. Please try again later.'
     });
   }
 });
