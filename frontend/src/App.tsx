@@ -220,7 +220,9 @@ function App() {
                         ?.symbols.map((sym) => (
                           <MenuItem key={sym.symbol} value={sym.symbol}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                              <Typography>{sym.symbol}</Typography>
+                              <Typography>
+                                {category === 'forex' ? sym.symbol.replace('=X', '') : sym.symbol}
+                              </Typography>
                               <Typography color="text.secondary">{sym.name}</Typography>
                             </Box>
                           </MenuItem>

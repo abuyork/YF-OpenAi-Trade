@@ -11,6 +11,24 @@ function TradingViewWidget({ symbol = 'AAPL' }: TradingViewWidgetProps) {
   useEffect(() => {
     if (!container.current) return;
 
+    const formatSymbol = (sym: string) => {
+      const upperSym = sym.toUpperCase();
+      
+      if (upperSym.includes('=X')) {
+        return `FX:${upperSym.replace('=X', '')}`;
+      }
+      
+      if (upperSym.endsWith('-USD') || upperSym.endsWith('-USDT')) {
+        const base = upperSym.split('-')[0];
+        const quote = upperSym.split('-')[1];
+        return `BINANCE:${base}${quote}`;
+      }
+      
+      return sym;
+    };
+
+    const formattedSymbol = formatSymbol(symbol);
+
     const script = document.createElement("script");
     script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
     script.type = "text/javascript";
@@ -19,7 +37,7 @@ function TradingViewWidget({ symbol = 'AAPL' }: TradingViewWidgetProps) {
       {
         "width": "100%",
         "height": "600",
-        "symbol": "${symbol}",
+        "symbol": "${formattedSymbol}",
         "interval": "60",
         "timezone": "Etc/UTC",
         "theme": "light",

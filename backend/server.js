@@ -131,7 +131,10 @@ app.get('/api/analysis/:symbol', async (req, res) => {
     
     const quote = await yahooFinance.quote(symbol, yahooFinanceOptions);
     
-    const analysisPrompt = `Please analyze this market data for ${symbol}:
+    // Format the symbol for display by removing =X for forex pairs
+    const displaySymbol = symbol.includes('=X') ? symbol.replace('=X', '') : symbol;
+    
+    const analysisPrompt = `Please analyze this market data for ${displaySymbol}:
 
 Current Price: $${quote.regularMarketPrice || 'N/A'}
 Previous Close: $${quote.regularMarketPreviousClose || 'N/A'}
