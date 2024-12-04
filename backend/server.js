@@ -43,20 +43,36 @@ async function generateAnalysis(prompt) {
       messages: [
         { 
           role: "system", 
-          content: `You are a professional technical analyst specializing in breakout trading strategies. 
-Analyze markets using the following framework:
-1. Multi-Timeframe Analysis (200 EMA for trend, 20 EMA for short-term alignment)
-2. Volume Analysis (using tick volume as proxy)
-3. Support/Resistance Levels (including Fibonacci levels)
-4. Market Structure (breakouts, retests, and range conditions)
-5. Risk Management (maintain 1:3 risk-reward ratio)
+          content: `You are a professional technical analyst specializing in multi-timeframe trading strategies. 
+Analyze markets using the following frameworks for three different trading styles:
 
-Format your analysis with clear [SECTION] markers and provide specific entry/exit levels.`
+SCALPING (5-15min timeframe):
+1. Price Action (1min and 5min charts)
+2. Support/Resistance Levels
+3. Volume Analysis
+4. Risk:Reward 1:2 minimum
+5. Tight Stop Loss
+
+DAY TRADING (1H-4H timeframe):
+1. Trend Direction (EMA 20, 50)
+2. Support/Resistance
+3. Volume Confirmation
+4. Risk:Reward 1:2 minimum
+5. Intraday Levels
+
+SWING TRADING (Daily/Weekly):
+1. Major Trend (200 EMA)
+2. Key Support/Resistance
+3. Volume Analysis
+4. Risk:Reward 1:3 minimum
+5. Multiple Day Holds
+
+Format your analysis with clear [SECTION] markers for each trading style and provide specific entry/exit levels.`
         },
         { role: "user", content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 750
+      max_tokens: 1000
     });
 
     return completion.choices[0].message.content;
@@ -163,17 +179,19 @@ function calculateEMA(prices, period) {
 
 function calculateMultipleEMAs(historical) {
   if (!historical || historical.length < 200) {
-    return { ema200: null, ema20: null };
+    return { ema200: null, ema50: null, ema20: null };
   }
 
   const closePrices = historical.map(candle => candle.close);
   
   // Calculate EMAs for different periods
   const ema200Data = closePrices.slice(-200);
+  const ema50Data = closePrices.slice(-50);
   const ema20Data = closePrices.slice(-20);
   
   return {
     ema200: calculateEMA(ema200Data, 200),
+    ema50: calculateEMA(ema50Data, 50),
     ema20: calculateEMA(ema20Data, 20)
   };
 }
@@ -256,37 +274,35 @@ app.get('/api/analysis/:symbol', async (req, res) => {
     
     const isForex = symbol.includes('=X');
     
-    // Fetch more historical data for better analysis
+    // Fetch data for multiple timeframes
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 365); // Get 1 year of data
 
     const quote = await yahooFinance.quote(symbol);
-    const historical = await yahooFinance.historical(symbol, {
+    const dailyData = await yahooFinance.historical(symbol, {
       period1: startDate,
       period2: endDate,
       interval: '1d'
     });
     
-    if (!quote || !historical) {
+    if (!quote || !dailyData) {
       throw new Error('Unable to fetch market data');
     }
 
     // Calculate technical indicators
-    const { ema200, ema20 } = calculateMultipleEMAs(historical);
+    const { ema200, ema50, ema20 } = calculateMultipleEMAs(dailyData);
     
-    // Use different analysis for forex vs stocks
     const activityAnalysis = isForex ? 
-      analyzeForexActivity(historical, symbol) :
-      analyzeVolume(historical);
+      analyzeForexActivity(dailyData, symbol) :
+      analyzeVolume(dailyData);
 
     // Calculate price levels
-    const prices = historical.map(candle => candle.close);
+    const prices = dailyData.map(candle => candle.close);
     const high52Week = Math.max(...prices);
     const low52Week = Math.min(...prices);
     const priceRange = high52Week - low52Week;
     
-    // Calculate Fibonacci levels
     const fibLevels = {
       level0: low52Week,
       level236: low52Week + (priceRange * 0.236),
@@ -309,9 +325,8 @@ Day Range: $${quote.regularMarketDayLow} - $${quote.regularMarketDayHigh}
 
 TECHNICAL INDICATORS:
 200 EMA: $${ema200?.toFixed(5) || 'N/A'}
+50 EMA: $${ema50?.toFixed(5) || 'N/A'}
 20 EMA: $${ema20?.toFixed(5) || 'N/A'}
-Price to 200 EMA Ratio: ${ema200 ? (quote.regularMarketPrice/ema200).toFixed(4) : 'N/A'}
-Price to 20 EMA Ratio: ${ema20 ? (quote.regularMarketPrice/ema20).toFixed(4) : 'N/A'}
 
 ${isForex ? `FOREX ACTIVITY ANALYSIS:
 Market Activity: ${activityAnalysis.activityLevel}
@@ -334,38 +349,43 @@ Fibonacci Levels:
 78.6%: $${fibLevels.level786.toFixed(5)}
 100% (Resistance): $${fibLevels.level100.toFixed(5)}
 
-Provide a detailed ${isForex ? 'forex' : 'breakout'} technical and price action analysis with the following sections:
+Do Technical and Price Action Analysis,Check Major Fundamental News that may highly Impact the Market,
+Then Provide three trading signals:
 
-[SECTION]Market Structure[SECTION]
-1. Current Trend (using 200 EMA and price position)
-2. Short-term Alignment (using 20 EMA)
-3. ${isForex ? 'Market Activity and Volatility' : 'Volume Analysis'} Confirmation
-4. Key Support/Resistance Levels (using Fibonacci)
+[SECTION]Scalping Signal[SECTION]
+TIMEFRAME: 5-15min
+SIGNAL: BUY/SELL/NEUTRAL
+ENTRY: $X.XXXXX
+STOP LOSS: $X.XXXXX
+TAKE PROFIT: $X.XXXXX (1:2 minimum)
+RATIONALE: (Key reasons for the signal(shortly))
 
-[SECTION]Trading Signal[SECTION]
-SIGNAL: BUY/SELL/DO NOT TRADE
-CURRENT PRICE: ${quote.regularMarketPrice}
-SETUP TYPE: ${isForex ? 'Breakout / Retest / Range / Avoid Trade' : 'Breakout / Range / Avoid Trade'}
-ENTRY PRICE: $X.XXXXX
-STOP LOSS: $X.XXXXX (with ${isForex ? '5-10 pip' : 'price'} buffer)
-TAKE PROFIT: $X.XXXXX (1:3 risk-reward ratio)
-${isForex ? 'ACTIVITY' : 'VOLUME'} CONFIRMATION: ${activityAnalysis.activityLevel === 'HIGH' ? 'YES' : 'NO'} (Current ratio: ${activityAnalysis.activityRatio?.toFixed(2)}x)
+[SECTION]Day Trading Signal[SECTION]
+TIMEFRAME: 1H-4H
+SIGNAL: BUY/SELL/NEUTRAL
+ENTRY: $X.XXXXX
+STOP LOSS: $X.XXXXX
+TAKE PROFIT: $X.XXXXX (1:2 minimum)
+RATIONALE: (Key reasons for the signal(shortly))
 
-[SECTION]Risk Management[SECTION]
-1. Position Size Recommendation
-2. Key Risk Levels (using Fibonacci)
-3. Potential Reward Zones
-4. Market Conditions Warning (if any)
+[SECTION]Swing Trading Signal[SECTION]
+TIMEFRAME: Daily/Weekly
+SIGNAL: BUY/SELL/NEUTRAL
+ENTRY: $X.XXXXX
+STOP LOSS: $X.XXXXX
+TAKE PROFIT: $X.XXXXX (1:3 minimum)
+RATIONALE: (Key reasons for the signal(shortly))
 
-Base your analysis on:
-1. Trend alignment (price relative to 200 EMA)
-2. Momentum (price relative to 20 EMA)
+Base analysis on:
+1. Multiple timeframe alignment
+2. Price action and trend structure
 3. ${isForex ? 'Market activity' : 'Volume'} confirmation
 4. Support/Resistance levels
-5. Risk:Reward ratio (minimum 1:3)
-${isForex ? '6. Current forex session activity (considering time of day)' : ''}
+5. Risk:Reward ratios
+${isForex ? '6. Current forex session activity' : ''}
+7. Major Fundamental News that may highly Impact the Market
 
-Keep the analysis focused on actionable insights and maintain strict adherence to the ${isForex ? 'forex' : 'breakout'} strategy rules.`;
+Provide specific levels and clear rationale for each timeframe.`;
 
     const analysis = await generateAnalysis(analysisPrompt);
     
