@@ -14,6 +14,7 @@ import {
 import axios, { AxiosError } from 'axios'
 import type { MarketData, AnalysisResponse, APIError } from './types/api'
 import React from 'react'
+import TradingViewWidget from './components/TradingViewWidget'
 
 interface AnalysisSection {
   title: string;
@@ -154,6 +155,10 @@ function App() {
 
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <TradingViewWidget symbol={selectedSymbol || 'AAPL'} />
+          </Grid>
+
           <Grid item xs={12}>
             <Card elevation={3}>
               <CardContent>

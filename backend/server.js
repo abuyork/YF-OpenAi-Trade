@@ -56,9 +56,20 @@ app.get('/api/market-data/:symbol', async (req, res) => {
     const { symbol } = req.params;
     console.log('Fetching data for symbol:', symbol);
     
+    // Get quote data
     const rawQuote = await yahooFinance.quote(symbol, yahooFinanceOptions);
-    console.log('Raw quote data:', rawQuote);
     
+    // Get historical data (1 year of daily data)
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setFullYear(endDate.getFullYear() - 1);
+    
+    const historicalData = await yahooFinance.historical(symbol, {
+      period1: startDate,
+      period2: endDate,
+      interval: '1d'
+    });
+
     if (!rawQuote) {
       return res.status(404).json({
         error: true,
@@ -68,14 +79,39 @@ app.get('/api/market-data/:symbol', async (req, res) => {
     
     const quote = {
       symbol: rawQuote.symbol,
+      // Current market data
       regularMarketPrice: rawQuote.regularMarketPrice || 0,
-      regularMarketPreviousClose: rawQuote.regularMarketPreviousClose || 0,
-      regularMarketDayLow: rawQuote.regularMarketDayLow || 0,
+      regularMarketOpen: rawQuote.regularMarketOpen || 0,
       regularMarketDayHigh: rawQuote.regularMarketDayHigh || 0,
+      regularMarketDayLow: rawQuote.regularMarketDayLow || 0,
+      regularMarketPreviousClose: rawQuote.regularMarketPreviousClose || 0,
       regularMarketVolume: rawQuote.regularMarketVolume || 0,
+      
+      // Price metrics
       fiftyTwoWeekLow: rawQuote.fiftyTwoWeekLow || 0,
       fiftyTwoWeekHigh: rawQuote.fiftyTwoWeekHigh || 0,
-      marketCap: rawQuote.marketCap || 0
+      fiftyDayAverage: rawQuote.fiftyDayAverage || 0,
+      twoHundredDayAverage: rawQuote.twoHundredDayAverage || 0,
+      
+      // Company metrics
+      marketCap: rawQuote.marketCap || 0,
+      trailingPE: rawQuote.trailingPE || 0,
+      priceToBook: rawQuote.priceToBook || 0,
+      dividendYield: rawQuote.dividendYield || 0,
+      
+      // Change metrics
+      regularMarketChange: rawQuote.regularMarketChange || 0,
+      regularMarketChangePercent: rawQuote.regularMarketChangePercent || 0,
+      
+      // Historical OHLCV data
+      historical: historicalData.map(day => ({
+        date: day.date,
+        open: day.open,
+        high: day.high,
+        low: day.low,
+        close: day.close,
+        volume: day.volume
+      }))
     };
 
     res.json({ quote });
