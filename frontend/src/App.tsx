@@ -3,7 +3,7 @@ import {
   Container, Button, Box, 
   CircularProgress, Grid,
   Select, MenuItem, FormControl, 
-  Alert, SelectChangeEvent, Typography
+  Alert, SelectChangeEvent
 } from '@mui/material'
 import { marketCategories } from './types/symbols'
 import { 
@@ -34,7 +34,7 @@ function App({ isDarkMode, toggleTheme }: AppProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [category, setCategory] = useState(marketCategories[0].id)
-  const [selectedSymbol, setSelectedSymbol] = useState('')
+  const [selectedSymbol, setSelectedSymbol] = useState('AAPL')
   const [analysisData, setAnalysisData] = useState<AnalysisSection[]>([])
   const [activeTab, setActiveTab] = useState(0)
 
@@ -165,7 +165,6 @@ function App({ isDarkMode, toggleTheme }: AppProps) {
       <Header toggleTheme={toggleTheme} isDarkMode={isDarkMode} />
       
       <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Typography variant="h1" sx={{ mb: 4 }}>Welcome to Trazel.io</Typography>
         
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} md={4}>
@@ -228,27 +227,30 @@ function App({ isDarkMode, toggleTheme }: AppProps) {
           </Alert>
         )}
 
-        {marketData && (
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Box sx={{ width: '100%', height: '600px' }}>
-                <TradingViewWidget symbol={selectedSymbol} isDarkMode={isDarkMode} />
-              </Box>
-            </Grid>
-            <Grid item xs={12}>
-              <MarketDataCard data={marketData} />
-            </Grid>
-            {analysisData.length > 0 && (
-              <Grid item xs={12}>
-                <AnalysisCard 
-                  analysisData={analysisData}
-                  activeTab={activeTab}
-                  onTabChange={handleTabChange}
-                />
-              </Grid>
-            )}
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Box sx={{ width: '100%', height: '600px' }}>
+              <TradingViewWidget symbol={selectedSymbol} isDarkMode={isDarkMode} />
+            </Box>
           </Grid>
-        )}
+          
+          {marketData && (
+            <>
+              <Grid item xs={12}>
+                <MarketDataCard data={marketData} />
+              </Grid>
+              {analysisData.length > 0 && (
+                <Grid item xs={12}>
+                  <AnalysisCard 
+                    analysisData={analysisData}
+                    activeTab={activeTab}
+                    onTabChange={handleTabChange}
+                  />
+                </Grid>
+              )}
+            </>
+          )}
+        </Grid>
       </Container>
     </Box>
   )
