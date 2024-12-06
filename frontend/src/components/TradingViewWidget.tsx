@@ -3,9 +3,10 @@ import { Card, CardContent } from '@mui/material';
 
 interface TradingViewWidgetProps {
   symbol?: string;
+  isDarkMode?: boolean;
 }
 
-function TradingViewWidget({ symbol = 'AAPL' }: TradingViewWidgetProps) {
+function TradingViewWidget({ symbol = 'AAPL', isDarkMode = false }: TradingViewWidgetProps) {
   const container = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,11 +41,11 @@ function TradingViewWidget({ symbol = 'AAPL' }: TradingViewWidgetProps) {
         "symbol": "${formattedSymbol}",
         "interval": "60",
         "timezone": "Etc/UTC",
-        "theme": "light",
+        "theme": "${isDarkMode ? 'dark' : 'light'}",
         "style": "1",
         "locale": "en",
-        "backgroundColor": "rgba(255, 255, 255, 1)",
-        "gridColor": "rgba(255, 255, 255, 0.06)",
+        "backgroundColor": "${isDarkMode ? 'rgba(19, 23, 34, 1)' : 'rgba(255, 255, 255, 1)'}",
+        "gridColor": "${isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)'}",
         "hide_legend": false,
         "hide_side_toolbar": false,
         "allow_symbol_change": true,
@@ -66,11 +67,20 @@ function TradingViewWidget({ symbol = 'AAPL' }: TradingViewWidgetProps) {
         container.current.innerHTML = '';
       }
     };
-  }, [symbol]);
+  }, [symbol, isDarkMode]);
 
   return (
-    <Card elevation={3}>
-      <CardContent sx={{ p: 0 }}>
+    <Card elevation={3} sx={{ height: '100%' }}>
+      <CardContent sx={{ 
+        p: 0, 
+        height: '100%', 
+        '& .tradingview-widget-container': {
+          height: '100%'
+        },
+        '& .tradingview-widget-container__widget': {
+          height: '100%'
+        }
+      }}>
         <div className="tradingview-widget-container" ref={container}>
           <div className="tradingview-widget-container__widget"></div>
         </div>

@@ -1,19 +1,22 @@
 import { useState } from 'react'
 import { 
-  Container, Button, Typography, Box, 
-  CircularProgress, Grid, AppBar, Toolbar, Card, CardContent,
-  useTheme, useMediaQuery, Select, MenuItem, FormControl, 
-  InputLabel, Tabs, Tab, Accordion, AccordionSummary, AccordionDetails, Alert, SelectChangeEvent
+  Container, Button, Box, 
+  CircularProgress, Grid,
+  Select, MenuItem, FormControl, 
+  Alert, SelectChangeEvent, Typography
 } from '@mui/material'
 import { marketCategories } from './types/symbols'
 import { 
-  TrendingUp, ShowChart, Analytics,
-  ExpandMore, 
-  Assessment} from '@mui/icons-material'
+  BiLineChart, BiAnalyse, BiBarChartAlt2,
+  BiStats 
+} from 'react-icons/bi';
 import axios, { AxiosError } from 'axios'
 import type { MarketData, APIError } from './types/api'
 import React from 'react'
 import TradingViewWidget from './components/TradingViewWidget'
+import { Header } from './components/Header'
+import { MarketDataCard } from './components/MarketDataCard'
+import { AnalysisCard } from './components/AnalysisCard'
 
 interface AnalysisSection {
   title: string;
@@ -21,31 +24,19 @@ interface AnalysisSection {
   icon: React.ReactNode;
 }
 
-function App() {
-  const [symbol, setSymbol] = useState('')
+interface AppProps {
+  isDarkMode: boolean;
+  toggleTheme: () => void;
+}
+
+function App({ isDarkMode, toggleTheme }: AppProps) {
   const [marketData, setMarketData] = useState<MarketData | null>(null)
-  const [analysis, setAnalysis] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [category, setCategory] = useState(marketCategories[0].id)
   const [selectedSymbol, setSelectedSymbol] = useState('')
-  const [analysisData, setAnalysisData] = useState<AnalysisSection[]>([]);
-
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-
-  const formatNumber = (num: number | undefined): string => {
-    if (!num) return 'N/A'
-    
-    if (num >= 1000000000000) {
-      return `${(num / 1000000000000).toFixed(2)}T`
-    } else if (num >= 1000000000) {
-      return `${(num / 1000000000).toFixed(2)}B`
-    } else if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(2)}M`
-    }
-    return num.toLocaleString()
-  }
+  const [analysisData, setAnalysisData] = useState<AnalysisSection[]>([])
+  const [activeTab, setActiveTab] = useState(0)
 
   const parseAnalysis = (text: string) => {
     const sections = text.split('[SECTION]').filter(Boolean);
@@ -58,13 +49,13 @@ function App() {
       const getIcon = (title: string) => {
         switch (title) {
           case 'Technical Summary':
-            return <Analytics />;
+            return <BiAnalyse size={24} />;
           case 'Trading Signal':
-            return <TrendingUp />;
+            return <BiLineChart size={24} />;
           case 'Key Levels':
-            return <ShowChart />;
+            return <BiBarChartAlt2 size={24} />;
           default:
-            return <Assessment />;
+            return <BiStats size={24} />;
         }
       };
 
@@ -97,27 +88,40 @@ function App() {
     throw lastError || new Error('Failed after retry attempts');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!symbol.trim()) {
-      setError('Please enter a valid symbol');
+
+  const handleCategoryChange = (event: SelectChangeEvent<string>) => {
+    setCategory(event.target.value);
+    setSelectedSymbol('');
+  };
+
+  const handleSymbolChange = (event: SelectChangeEvent<string>) => {
+    const value = event.target.value;
+    setSelectedSymbol(value);
+  };
+
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
+  const handleAnalyze = async () => {
+    if (!selectedSymbol) {
+      setError('Please select a symbol');
       return;
     }
 
     setLoading(true);
     setError('');
     setMarketData(null);
-    setAnalysis('');
     setAnalysisData([]);
     
     try {
-      const marketResponse = await fetchWithRetry(`/api/market-data/${symbol.toUpperCase()}`);
+      const marketResponse = await fetchWithRetry(`/api/market-data/${selectedSymbol}`);
       if (!marketResponse?.data || marketResponse.data.error) {
         throw new Error(marketResponse?.data?.message || 'Failed to fetch market data');
       }
       setMarketData(marketResponse.data);
 
-      const analysisResponse = await fetchWithRetry(`/api/analysis/${symbol.toUpperCase()}`);
+      const analysisResponse = await fetchWithRetry(`/api/analysis/${selectedSymbol}`);
       if (!analysisResponse?.data || analysisResponse.data.error) {
         throw new Error(analysisResponse?.data?.message || 'Failed to generate analysis');
       }
@@ -127,7 +131,6 @@ function App() {
         throw new Error('No analysis data received');
       }
       
-      setAnalysis(analysisText);
       setAnalysisData(parseAnalysis(analysisText));
     } catch (err) {
       console.error('API Error:', err);
@@ -145,300 +148,108 @@ function App() {
       }
       
       setMarketData(null);
-      setAnalysis('');
-      setAnalysisData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCategoryChange = (_event: React.SyntheticEvent, newValue: string) => {
-    setCategory(newValue);
-    setSelectedSymbol('');
-  };
-
-  const handleSymbolChange = (event: SelectChangeEvent<string>) => {
-    const value = event.target.value;
-    setSelectedSymbol(value);
-    setSymbol(value);
-  };
-
-  const formatDisplaySymbol = (symbol: string) => {
-    return symbol.replace('=X', '');
-  };
-
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static" sx={{ 
-        backgroundColor: '#1976d2', 
-        backgroundImage: 'linear-gradient(45deg, #1976d2 30%, #2196f3 90%)',
-        marginBottom: 4 
-      }}>
-        <Toolbar>
-          <ShowChart sx={{ mr: 2 }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Trazel.io
-          </Typography>
-        </Toolbar>
-      </AppBar>
-
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Grid container spacing={3}>
-          {error && (
-            <Grid item xs={12}>
-              <Alert 
-                severity="error" 
-                onClose={() => setError('')}
-                sx={{ mb: 2 }}
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column',
+      minHeight: '100vh',
+      bgcolor: 'background.default',
+      color: 'text.primary',
+      pt: '64px'
+    }}>
+      <Header toggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+      
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Typography variant="h1" sx={{ mb: 4 }}>Welcome to Trazel.io</Typography>
+        
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <Select
+                value={category}
+                onChange={handleCategoryChange}
+                displayEmpty
               >
-                {error}
-              </Alert>
-            </Grid>
-          )}
-
-          <Grid item xs={12}>
-            <TradingViewWidget symbol={selectedSymbol || 'AAPL'} />
+                {marketCategories.map((cat) => (
+                  <MenuItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
-
-          <Grid item xs={12}>
-            <Card elevation={3}>
-              <CardContent>
-                <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-                  <Tabs 
-                    value={category} 
-                    onChange={handleCategoryChange}
-                    variant="fullWidth"
-                    sx={{
-                      '& .MuiTab-root': {
-                        fontSize: '1rem',
-                        fontWeight: 500,
-                        textTransform: 'none',
-                      },
-                      '& .Mui-selected': {
-                        color: 'primary.main',
-                      },
-                    }}
-                  >
-                    {marketCategories.map((cat) => (
-                      <Tab 
-                        key={cat.id}
-                        label={cat.name} 
-                        value={cat.id}
-                        icon={
-                          cat.id === 'stocks' ? <ShowChart /> : 
-                          cat.id === 'forex' ? <TrendingUp /> : 
-                          <Analytics />
-                        }
-                        iconPosition="start"
-                      />
-                    ))}
-                  </Tabs>
-                </Box>
-
-                <Box component="form" onSubmit={handleSubmit} 
-                  sx={{ 
-                    display: 'flex', 
-                    gap: 2,
-                    flexDirection: isMobile ? 'column' : 'row'
-                  }}>
-                  <FormControl fullWidth>
-                    <InputLabel id="symbol-select-label">Select {marketCategories.find(c => c.id === category)?.name} Symbol</InputLabel>
-                    <Select
-                      labelId="symbol-select-label"
-                      value={selectedSymbol}
-                      onChange={handleSymbolChange}
-                      label={`Select ${marketCategories.find(c => c.id === category)?.name} Symbol`}
-                      disabled={loading}
-                      sx={{
-                        borderRadius: '8px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: error ? 'error.main' : undefined,
-                        },
-                      }}
-                    >
-                      {marketCategories
-                        .find(c => c.id === category)
-                        ?.symbols.map((sym) => (
-                          <MenuItem key={sym.symbol} value={sym.symbol}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                              <Typography>
-                                {category === 'forex' ? sym.symbol.replace('=X', '') : sym.symbol}
-                              </Typography>
-                              <Typography color="text.secondary">{sym.name}</Typography>
-                            </Box>
-                          </MenuItem>
-                        ))}
-                    </Select>
-                  </FormControl>
-
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    disabled={loading || !selectedSymbol}
-                    sx={{ 
-                      minWidth: isMobile ? '100%' : '180px',
-                      height: isMobile ? '48px' : '56px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
-                        opacity: 0,
-                        transition: 'opacity 0.2s ease-in-out',
-                      },
-                      '&:hover::before': {
-                        opacity: 1,
-                      },
-                      '&.Mui-disabled': {
-                        background: '#e0e0e0',
-                        color: 'rgba(0, 0, 0, 0.26)',
-                      }
-                    }}
-                  >
-                    {loading ? (
-                      <>
-                        <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Analytics sx={{ fontSize: '20px' }} />
-                        Analyze
-                      </>
-                    )}
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {marketData && (
-            <Grid item xs={12} md={6}>
-              <Card elevation={3}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <TrendingUp sx={{ mr: 1, color: 'primary.main' }} />
-                    <Typography variant="h6">
-                      Market Data: {formatDisplaySymbol(marketData.quote.symbol)}
-                    </Typography>
-                  </Box>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <DataPoint 
-                        label="Current Price" 
-                        value={`$${formatNumber(marketData.quote.regularMarketPrice)}`}
-                      />
-                      <DataPoint 
-                        label="Previous Close" 
-                        value={`$${formatNumber(marketData.quote.regularMarketPreviousClose)}`}
-                      />
-                      <DataPoint 
-                        label="Day Range" 
-                        value={`$${formatNumber(marketData.quote.regularMarketDayLow)} - $${formatNumber(marketData.quote.regularMarketDayHigh)}`}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <DataPoint 
-                        label="Volume" 
-                        value={formatNumber(marketData.quote.regularMarketVolume)}
-                      />
-                      <DataPoint 
-                        label="52 Week Range" 
-                        value={`$${formatNumber(marketData.quote.fiftyTwoWeekLow)} - $${formatNumber(marketData.quote.fiftyTwoWeekHigh)}`}
-                      />
-                      <DataPoint 
-                        label="Market Cap" 
-                        value={`$${formatNumber(marketData.quote.marketCap)}`}
-                      />
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </Card>
-            </Grid>
-          )}
-
-          {analysis && (
-            <Grid item xs={12} md={marketData ? 6 : 12}>
-              <Card elevation={3}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Analytics sx={{ mr: 1, color: 'primary.main' }} />
-                    <Typography variant="h6">AI Analysis</Typography>
-                  </Box>
-                  
-                  {analysisData.map((section, index) => (
-                    <Accordion 
-                      key={section.title}
-                      defaultExpanded={index === 0}
-                      sx={{ 
-                        mb: index < analysisData.length - 1 ? 1 : 0,
-                        boxShadow: 'none',
-                        '&:before': { display: 'none' }
-                      }}
-                    >
-                      <AccordionSummary
-                        expandIcon={<ExpandMore />}
-                        sx={{ 
-                          backgroundColor: 'rgba(25, 118, 210, 0.04)',
-                          borderRadius: '8px',
-                          '&.Mui-expanded': { 
-                            borderBottomLeftRadius: 0,
-                            borderBottomRightRadius: 0
-                          }
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          {React.cloneElement(section.icon as React.ReactElement, { 
-                            sx: { mr: 1, color: 'primary.main' }
-                          })}
-                          <Typography variant="subtitle1" fontWeight={500}>
-                            {section.title}
-                          </Typography>
-                        </Box>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <Typography 
-                          variant="body2" 
-                          color="text.secondary" 
-                          sx={{ 
-                            lineHeight: 1.7,
-                            whiteSpace: 'pre-line'
-                          }}
-                        >
-                          {section.content}
-                        </Typography>
-                      </AccordionDetails>
-                    </Accordion>
+          
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <Select
+                value={selectedSymbol}
+                onChange={handleSymbolChange}
+                displayEmpty
+                disabled={!category}
+              >
+                {marketCategories
+                  .find(cat => cat.id === category)
+                  ?.symbols.map((sym) => (
+                    <MenuItem key={sym.symbol} value={sym.symbol}>
+                      {sym.name}
+                    </MenuItem>
                   ))}
-                </CardContent>
-              </Card>
-            </Grid>
-          )}
-        </Grid>
-      </Container>
-    </Box>
-  )
-}
+              </Select>
+            </FormControl>
+          </Grid>
 
-// Helper component for displaying data points
-function DataPoint({ label, value }: { label: string; value: string }) {
-  return (
-    <Box sx={{ mb: 2 }}>
-      <Typography variant="subtitle2" color="text.secondary">
-        {label}
-      </Typography>
-      <Typography variant="body1" sx={{ fontWeight: 500 }}>
-        {value}
-      </Typography>
+          <Grid item xs={12} md={4}>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={handleAnalyze}
+              disabled={!selectedSymbol || loading}
+            >
+              {loading ? (
+                <>
+                  <CircularProgress size={24} sx={{ mr: 1 }} color="inherit" />
+                  Analyzing...
+                </>
+              ) : (
+                'Analyze'
+              )}
+            </Button>
+          </Grid>
+        </Grid>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {marketData && (
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Box sx={{ width: '100%', height: '600px' }}>
+                <TradingViewWidget symbol={selectedSymbol} isDarkMode={isDarkMode} />
+              </Box>
+            </Grid>
+            <Grid item xs={12}>
+              <MarketDataCard data={marketData} />
+            </Grid>
+            {analysisData.length > 0 && (
+              <Grid item xs={12}>
+                <AnalysisCard 
+                  analysisData={analysisData}
+                  activeTab={activeTab}
+                  onTabChange={handleTabChange}
+                />
+              </Grid>
+            )}
+          </Grid>
+        )}
+      </Container>
     </Box>
   )
 }
