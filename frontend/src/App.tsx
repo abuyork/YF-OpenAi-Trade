@@ -3,7 +3,7 @@ import {
   Container, Button, Box, 
   CircularProgress, Grid,
   Select, MenuItem, FormControl, 
-  Alert, SelectChangeEvent
+  Alert, SelectChangeEvent, Card
 } from '@mui/material'
 import { marketCategories } from './types/symbols'
 import { 
@@ -155,97 +155,149 @@ function App({ isDarkMode, toggleTheme }: AppProps) {
 
   return (
     <Box sx={{ 
-      display: 'flex', 
-      flexDirection: 'column',
       minHeight: '100vh',
-      bgcolor: 'background.default',
-      color: 'text.primary',
-      pt: '64px'
+      pt: { xs: 8, sm: 9 },
+      pb: { xs: 4, sm: 6 },
+      backgroundColor: 'background.default'
     }}>
       <Header toggleTheme={toggleTheme} isDarkMode={isDarkMode} />
       
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth>
-              <Select
-                value={category}
-                onChange={handleCategoryChange}
-                displayEmpty
-              >
-                {marketCategories.map((cat) => (
-                  <MenuItem key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth>
-              <Select
-                value={selectedSymbol}
-                onChange={handleSymbolChange}
-                displayEmpty
-                disabled={!category}
-              >
-                {marketCategories
-                  .find(cat => cat.id === category)
-                  ?.symbols.map((sym) => (
-                    <MenuItem key={sym.symbol} value={sym.symbol}>
-                      {sym.name}
+      <Container 
+        maxWidth="xl" 
+        sx={{ 
+          px: { xs: 2, sm: 3, md: 4 },
+        }}
+      >
+        <Box 
+          sx={{ 
+            mb: 4,
+            mt: { xs: 2, sm: 3 },
+            animation: 'fadeIn 0.5s ease-out'
+          }}
+        >
+          <Grid container spacing={3} alignItems="center">
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <Select
+                  value={category}
+                  onChange={handleCategoryChange}
+                  sx={{
+                    height: '48px',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderRadius: '12px',
+                    },
+                  }}
+                >
+                  {marketCategories.map((cat) => (
+                    <MenuItem key={cat.id} value={cat.id}>
+                      {cat.name}
                     </MenuItem>
                   ))}
-              </Select>
-            </FormControl>
-          </Grid>
+                </Select>
+              </FormControl>
+            </Grid>
 
-          <Grid item xs={12} md={4}>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={handleAnalyze}
-              disabled={!selectedSymbol || loading}
-            >
-              {loading ? (
-                <>
-                  <CircularProgress size={24} sx={{ mr: 1 }} color="inherit" />
-                  Analyzing...
-                </>
-              ) : (
-                'Analyze'
-              )}
-            </Button>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <Select
+                  value={selectedSymbol}
+                  onChange={handleSymbolChange}
+                  displayEmpty
+                  disabled={!category}
+                  sx={{
+                    height: '48px',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderRadius: '12px',
+                    },
+                  }}
+                >
+                  {marketCategories
+                    .find(cat => cat.id === category)
+                    ?.symbols.map((sym) => (
+                      <MenuItem key={sym.symbol} value={sym.symbol}>
+                        {sym.name}
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleAnalyze}
+                disabled={!selectedSymbol || loading}
+                sx={{
+                  height: '48px',
+                  borderRadius: '12px',
+                }}
+              >
+                {loading ? (
+                  <>
+                    <CircularProgress size={24} sx={{ mr: 1 }} color="inherit" />
+                    Analyzing...
+                  </>
+                ) : (
+                  'Analyze'
+                )}
+              </Button>
+            </Grid>
           </Grid>
-        </Grid>
+        </Box>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert 
+            severity="error" 
+            sx={{ 
+              mb: 4,
+              borderRadius: '12px',
+              animation: 'slideIn 0.3s ease-out'
+            }}
+          >
             {error}
           </Alert>
         )}
 
-        <Grid container spacing={3}>
+        <Grid container spacing={4}>
           <Grid item xs={12}>
-            <Box sx={{ width: '100%', height: '600px' }}>
+            <Card 
+              elevation={0}
+              sx={{ 
+                height: '600px',
+                overflow: 'hidden',
+                animation: 'fadeIn 0.5s ease-out',
+                position: 'relative',
+                transform: 'none !important',
+                transition: 'none !important',
+                boxShadow: 'none !important',
+                '&:hover': {
+                  transform: 'none !important',
+                  boxShadow: 'none !important'
+                }
+              }}
+            >
               <TradingViewWidget symbol={selectedSymbol} isDarkMode={isDarkMode} />
-            </Box>
+            </Card>
           </Grid>
           
           {marketData && (
             <>
               <Grid item xs={12}>
-                <MarketDataCard data={marketData} />
+                <Box sx={{ animation: 'fadeIn 0.5s ease-out' }}>
+                  <MarketDataCard data={marketData} />
+                </Box>
               </Grid>
+              
               {analysisData.length > 0 && (
                 <Grid item xs={12}>
-                  <AnalysisCard 
-                    analysisData={analysisData}
-                    activeTab={activeTab}
-                    onTabChange={handleTabChange}
-                  />
+                  <Box sx={{ animation: 'fadeIn 0.5s ease-out' }}>
+                    <AnalysisCard 
+                      analysisData={analysisData}
+                      activeTab={activeTab}
+                      onTabChange={handleTabChange}
+                    />
+                  </Box>
                 </Grid>
               )}
             </>

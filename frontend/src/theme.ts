@@ -1,133 +1,176 @@
-import { createTheme, Theme, alpha } from '@mui/material/styles'
+import { createTheme, alpha, Theme } from '@mui/material';
+
+// Define color palette constants
+const COLORS = {
+  primary: {
+    main: '#2C3E50',  // Elegant dark blue
+    light: '#34495E',
+    dark: '#1A252F',
+  },
+  secondary: {
+    main: '#E67E22',  // Premium orange
+    light: '#F39C12',
+    dark: '#D35400',
+  },
+  accent: {
+    main: '#16A085',  // Sophisticated teal
+    light: '#1ABC9C',
+    dark: '#0E6655',
+  },
+  success: {
+    main: '#27AE60',
+    light: '#2ECC71',
+    dark: '#219A52',
+  },
+  warning: {
+    main: '#F1C40F',
+    light: '#F4D03F',
+    dark: '#D4AC0D',
+  },
+  error: {
+    main: '#E74C3C',
+    light: '#EC7063',
+    dark: '#C0392B',
+  },
+};
 
 export const getTheme = (isDarkMode: boolean): Theme => {
-  const mainColor = '#3B82F6';
-  const secondaryColor = '#10B981';
-  const accentColor = '#6366F1';
-  
-  const theme = createTheme({
+  return createTheme({
     palette: {
       mode: isDarkMode ? 'dark' : 'light',
-      primary: {
-        main: mainColor,
-        light: alpha(mainColor, 0.8),
-        dark: alpha(mainColor, 1.2),
-      },
-      secondary: {
-        main: secondaryColor,
-        light: alpha(secondaryColor, 0.8),
-        dark: alpha(secondaryColor, 1.2),
-      },
+      primary: COLORS.primary,
+      secondary: COLORS.secondary,
+      error: COLORS.error,
+      warning: COLORS.warning,
+      success: COLORS.success,
       background: {
-        default: isDarkMode ? '#111827' : '#F3F4F6',
-        paper: isDarkMode ? '#1F2937' : '#FFFFFF',
+        default: isDarkMode ? '#1E272E' : '#F5F6FA',
+        paper: isDarkMode ? '#2D3436' : '#FFFFFF',
       },
       text: {
-        primary: isDarkMode ? '#F9FAFB' : '#1F2937',
-        secondary: isDarkMode ? '#D1D5DB' : '#4B5563',
+        primary: isDarkMode ? '#F5F6FA' : '#2D3436',
+        secondary: isDarkMode ? '#B2BEC3' : '#636E72',
       },
     },
     typography: {
       fontFamily: "'Inter', 'system-ui', '-apple-system', sans-serif",
       h1: {
-        fontSize: '3.5rem',
+        fontSize: '2.5rem',
         fontWeight: 700,
         letterSpacing: '-0.02em',
-        lineHeight: 1.2,
-        background: `linear-gradient(135deg, ${mainColor}, ${accentColor})`,
+        background: `linear-gradient(135deg, ${COLORS.primary.main}, ${COLORS.accent.main})`,
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
       },
-      h6: {
+      h2: {
+        fontSize: '2rem',
         fontWeight: 600,
         letterSpacing: '-0.01em',
+      },
+      h3: {
+        fontSize: '1.75rem',
+        fontWeight: 600,
+      },
+      h4: {
+        fontSize: '1.5rem',
+        fontWeight: 600,
+      },
+      h5: {
+        fontSize: '1.25rem',
+        fontWeight: 600,
+      },
+      h6: {
+        fontSize: '1rem',
+        fontWeight: 600,
+      },
+      subtitle1: {
+        fontSize: '1.1rem',
+        letterSpacing: '0.01em',
+      },
+      subtitle2: {
+        fontSize: '0.9rem',
+        fontWeight: 500,
+      },
+      body1: {
+        fontSize: '1rem',
+        lineHeight: 1.6,
+      },
+      body2: {
+        fontSize: '0.9rem',
+        lineHeight: 1.5,
       },
       button: {
         fontWeight: 600,
         letterSpacing: '0.02em',
+        textTransform: 'none',
       },
-    },
-    shape: {
-      borderRadius: 16,
     },
     components: {
       MuiCard: {
         styleOverrides: {
-          root: {
-            borderRadius: '24px',
-            backdropFilter: 'blur(20px)',
-            backgroundColor: isDarkMode 
-              ? alpha('#1F2937', 0.8)
-              : alpha('#FFFFFF', 0.8),
-            boxShadow: isDarkMode
-              ? `0 8px 32px ${alpha('#000000', 0.4)}`
-              : `0 8px 32px ${alpha('#000000', 0.1)}`,
-            border: `1px solid ${isDarkMode 
-              ? alpha('#FFFFFF', 0.05)
-              : alpha('#000000', 0.05)}`,
-          },
+          root: ({ theme }) => ({
+            borderRadius: '1rem',
+            transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+            backdropFilter: 'blur(10px)',
+            backgroundColor: alpha(theme.palette.background.paper, 0.8),
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: `0 8px 32px ${alpha(
+                theme.palette.mode === 'dark' ? '#000' : '#2563EB',
+                0.15
+              )}`,
+            },
+          }),
         },
       },
       MuiButton: {
         styleOverrides: {
           root: {
-            borderRadius: '12px',
+            height: '40px', // Match dropdown height
+            borderRadius: '8px',
             textTransform: 'none',
-            padding: '12px 24px',
-            fontSize: '0.95rem',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            '&:hover': {
-              transform: 'translateY(-2px)',
-            },
+            fontWeight: 500,
           },
-          contained: {
-            background: `linear-gradient(135deg, ${mainColor}, ${accentColor})`,
+          contained: ({ }) => ({
+            background: `linear-gradient(135deg, ${COLORS.primary.main}, ${COLORS.accent.main})`,
             color: '#FFFFFF',
-            boxShadow: `0 4px 16px ${alpha(mainColor, 0.4)}`,
             '&:hover': {
-              background: `linear-gradient(135deg, ${mainColor}, ${accentColor})`,
-              boxShadow: `0 8px 24px ${alpha(mainColor, 0.6)}`,
+              background: `linear-gradient(135deg, ${COLORS.primary.dark}, ${COLORS.accent.dark})`,
+              transform: 'translateY(-2px)',
+              boxShadow: `0 8px 24px ${alpha(COLORS.primary.main, 0.25)}`,
             },
-          },
-          text: {
-            color: 'inherit',
+          }),
+        },
+      },
+      MuiTextField: {
+        styleOverrides: {
+          root: {
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '0.75rem',
+            },
           },
         },
       },
       MuiAppBar: {
         styleOverrides: {
           root: {
-            backdropFilter: 'blur(20px)',
-            backgroundColor: isDarkMode 
-              ? alpha('#111827', 0.8)
-              : alpha('#FFFFFF', 0.95),
-            borderBottom: `1px solid ${isDarkMode 
-              ? alpha('#FFFFFF', 0.05)
-              : alpha('#000000', 0.05)}`,
-            color: isDarkMode ? '#F9FAFB' : '#1F2937',
+            backgroundColor: isDarkMode ? '#1E272E' : '#FFFFFF',
+            boxShadow: `0 1px 3px ${alpha(COLORS.primary.main, 0.1)}`,
           },
         },
       },
-      MuiIconButton: {
+      MuiSelect: {
         styleOverrides: {
           root: {
-            '&:hover': {
-              backgroundColor: alpha(mainColor, 0.1),
-            },
-          },
-        },
-      },
-      MuiTypography: {
-        styleOverrides: {
-          root: {
-            color: 'inherit',
+            height: '40px', // Consistent height
           },
         },
       },
     },
+    shape: {
+      borderRadius: 12,
+    },
   });
-
-  return theme;
-}
+};
 
 export default getTheme 

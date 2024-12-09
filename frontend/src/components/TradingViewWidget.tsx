@@ -70,15 +70,41 @@ function TradingViewWidget({ symbol = 'AAPL', isDarkMode = false }: TradingViewW
   }, [symbol, isDarkMode]);
 
   return (
-    <Card elevation={3} sx={{ height: '100%' }}>
+    <Card 
+      elevation={3} 
+      sx={{ 
+        height: '100%',
+        backdropFilter: 'none',
+        backgroundColor: isDarkMode ? 'rgba(19, 23, 34, 1)' : 'rgba(255, 255, 255, 1)',
+        transition: 'none !important',
+        transform: 'none !important',
+        boxShadow: theme => `${theme.shadows[3]} !important`,
+        '&:hover': {
+          transform: 'none !important',
+          boxShadow: theme => `${theme.shadows[3]} !important`,
+          backdropFilter: 'none',
+          cursor: 'default'
+        },
+        '& *': {
+          transition: 'none !important',
+          transform: 'none !important'
+        }
+      }}
+    >
       <CardContent sx={{ 
         p: 0, 
-        height: '100%', 
+        height: '100%',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
         '& .tradingview-widget-container': {
-          height: '100%'
+          height: '100%',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden'
         },
         '& .tradingview-widget-container__widget': {
-          height: '100%'
+          height: '100%',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden'
         }
       }}>
         <div className="tradingview-widget-container" ref={container}>

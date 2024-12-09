@@ -1,5 +1,5 @@
 import { 
-  AppBar, Toolbar, Typography, Button, IconButton, Box, 
+  AppBar, Toolbar, Button, IconButton, Box, 
   useTheme, Container, alpha
 } from '@mui/material';
 import { Logo } from './Logo';
@@ -17,95 +17,69 @@ export function Header({ toggleTheme, isDarkMode }: HeaderProps) {
   const theme = useTheme();
 
   return (
-    <AppBar position="fixed" elevation={0}>
+    <AppBar 
+      position="fixed" 
+      elevation={0}
+      sx={{
+        backdropFilter: 'blur(8px)',
+        backgroundColor: alpha(theme.palette.background.paper, 0.8),
+        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+      }}
+    >
       <Container maxWidth="xl">
-        <Toolbar sx={{ py: 1 }}>
+        <Toolbar sx={{ py: 1, gap: 2 }}>
+          <Logo />
+          
+          <Box sx={{ flexGrow: 1 }} />
+          
           <Box sx={{ 
             display: 'flex', 
-            alignItems: 'center', 
-            flexGrow: 1,
-            gap: 1
-          }}>
-            <Logo />
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                fontWeight: 700
-              }}
-            >
-              Trazel.io
-            </Typography>
-          </Box>
-
-          <Box sx={{ 
-            display: 'flex', 
-            gap: 3, 
+            gap: 1,
             alignItems: 'center'
           }}>
             <Button 
               color="inherit" 
-              startIcon={<BiHomeAlt2 size={20} />}
-              sx={{ 
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  color: theme.palette.primary.main,
-                }
-              }}
+              startIcon={<BiHomeAlt2 />}
+              sx={{ fontWeight: 500 }}
             >
               Home
             </Button>
             
             <Button 
               color="inherit" 
-              startIcon={<BiInfoCircle size={20} />}
-              sx={{ 
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  color: theme.palette.primary.main,
-                }
-              }}
+              startIcon={<BiInfoCircle />}
+              sx={{ fontWeight: 500 }}
             >
               About
             </Button>
             
             <Button 
               color="inherit" 
-              startIcon={<BiSupport size={20} />}
-              sx={{ 
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  color: theme.palette.primary.main,
-                }
-              }}
+              startIcon={<BiSupport />}
+              sx={{ fontWeight: 500 }}
             >
               Support
             </Button>
 
             <IconButton 
-              onClick={toggleTheme} 
+              onClick={toggleTheme}
               sx={{ 
                 color: theme.palette.text.primary,
+                bgcolor: alpha(theme.palette.primary.main, 0.05),
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
                 }
               }}
             >
-              {isDarkMode ? <BiSun size={24} /> : <BiMoon size={24} />}
+              {isDarkMode ? <BiSun /> : <BiMoon />}
             </IconButton>
 
             <Button
               variant="contained"
-              startIcon={<BiUser size={20} />}
+              startIcon={<BiUser />}
               sx={{
+                minWidth: '100px',
                 background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                color: '#FFFFFF',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.5)}`,
-                }
               }}
             >
               Login
